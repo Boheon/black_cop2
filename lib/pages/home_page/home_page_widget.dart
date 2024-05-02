@@ -2,8 +2,6 @@ import 'package:black_cops/screens/log_screen.dart';
 import 'package:black_cops/screens/mood_screen.dart';
 import 'package:black_cops/screens/phone_numbers_screen.dart';
 import 'package:black_cops/screens/scan_screen.dart';
-import 'package:black_cops/utils/snackbar.dart';
-import 'package:black_cops/widgets/descriptor_tile.dart';
 import 'package:flutter_blue_plus/flutter_blue_plus.dart';
 
 import '/flutter_flow/flutter_flow_theme.dart';

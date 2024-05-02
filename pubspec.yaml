@@ -71,6 +71,8 @@ dependencies:
   #flutter_sms: ^2.3.3
 
 
+  flutter_web_plugins: any
+  http: any
 dependency_overrides:
   http: 1.2.0
   uuid: ^4.0.0

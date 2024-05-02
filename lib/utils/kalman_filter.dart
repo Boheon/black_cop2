@@ -1,4 +1,3 @@
-import 'dart:math';
 
 class KalmanFilter {
   bool _initialized = false;
