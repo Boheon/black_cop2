@@ -2,6 +2,7 @@ import 'dart:async';
 
 import 'package:flutter/material.dart';
 import 'package:flutter_blue_plus/flutter_blue_plus.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
 import 'device_screen.dart';
 import '../screens/phone_numbers_screen.dart';
@@ -10,7 +11,7 @@ import '../widgets/system_device_tile.dart';
 import '../widgets/scan_result_tile.dart';
 import '../utils/extra.dart';
 
-String searchText = 'PRX';
+String searchText = 'BLK';
 
 class ScanScreen extends StatefulWidget {
   const ScanScreen({super.key});

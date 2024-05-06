@@ -28,6 +28,7 @@ dependencies:
   auto_size_text: 3.0.0
   cached_network_image: 3.3.1
   collection: 1.18.0
+  flutter_animate: ^4.5.0
   flutter_cache_manager: ^3.3.2
   font_awesome_flutter: ^10.7.0
   from_css_color: 2.0.0
@@ -68,21 +69,32 @@ dependencies:
   flutter_local_notifications: ^17.1.0
   crypto: ^3.0.3
   permission_handler: ^11.3.1
-  #flutter_sms: ^2.3.3
 
 
-  flutter_web_plugins: any
   http: any
+  url_strategy: ^0.2.0
+  mobile_number: ^2.1.1
 dependency_overrides:
   http: 1.2.0
   uuid: ^4.0.0
 
 dev_dependencies:
+  flutter_launcher_icons: ^0.13.1
   flutter_lints: ^3.0.2
+  image: ^4.1.7
   lints: 3.0.0
 
   flutter_test:
     sdk: flutter
+  
+
+flutter_launcher_icons:
+  android: true
+  ios: true
+  remove_alpha_ios: true
+  web:
+    generate: true
+  image_path: 'assets/images/app_launcher_icon.png'
 
 # For information on the generic Dart part of this file, see the
 # following page: https://dart.dev/tools/pub/pubspec

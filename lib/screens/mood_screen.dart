@@ -18,17 +18,6 @@ class _MoodScreenState extends State<MoodScreen> {
   @override
   initState() {
     super.initState();
-    //10초마다 자동으로 RSSI값을 업데이트
-    // Timer.periodic(Duration(seconds: bleAlarm.SECOND), (timer) async {
-    //   for (BluetoothDevice device in bluetoothDevices) {
-    //     print(
-    //         "@22222222222222222222222222222222222222222222222222222222222222222222222222");
-    //     _updateAverageRssiValues(device);
-    //     print(
-    //         "111111111111111111111111111111111111111111111111111111111111111111111111111");
-    //     await bleAlarm.alarm(device);
-    //   }
-    // });
   }
 
   Future<void> _updateAverageRssiValues(BluetoothDevice device) async {
@@ -100,7 +89,7 @@ class _MoodScreenState extends State<MoodScreen> {
             title: Text(device.platformName),
             onTap: () {
               //탭하면 메세지 전송
-              writeData(device, 'C');
+              writeData(device, 'A');
               print('write mood message');
             },
           );

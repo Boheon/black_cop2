@@ -12,7 +12,7 @@ class NaverCloudSms {
   // final String SERVICE_ID = 'ncp:sms:kr:331509974752:blackcops';
   // final String SECRET_KEY = 'HZtpWfiutctmuvh6Qca4TLbUzTyOBX60mEpZT4pw';
   String timestamp = (DateTime.now().millisecondsSinceEpoch).toString();
-  Future<void> sendSMS(List<String> phoneNumbers) async {
+  Future<void> sendSMS(List<String> phoneNumbers, String myNumber) async {
     print(
         "------------------------------------------------------------------------------------");
     print('timeStamp = $timestamp');
@@ -39,12 +39,12 @@ class NaverCloudSms {
         'countryCode': '82',
         'from': '01066102805',
         // 'subject': 'black cop 알림',
-        'content': '도와주세요! 현재위치 : $location',
+        'content': "도와주세요! 번호 : $myNumber, 현재위치 : $location",
         'messages': phoneNumbers.map((phoneNumber) {
           return {
             "to": phoneNumber,
             //"subject": "도와주세요!!!",
-            "content": "도와주세요! 현재위치 : $location",
+            "content": "도와주세요! 번호 : $myNumber, 현재위치 : $location",
           };
         }).toList(),
         'files': []

@@ -3,7 +3,9 @@ import 'dart:io';
 import 'package:black_cops/utils/bluetooth_alarm.dart';
 import 'package:black_cops/utils/naver_cloud_sms.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_blue_plus/flutter_blue_plus.dart';
+import 'package:mobile_number/mobile_number.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:flutter_phone_direct_caller/flutter_phone_direct_caller.dart';
 
@@ -21,10 +23,19 @@ class _PhoneNumbersScreenState extends State<PhoneNumbersScreen> {
   BluetoothAlarm bleAlarm = BluetoothAlarm(SECOND: 10, MESSAGE_DISTANCE: 10);
   List<BluetoothDevice> bluetoothDevices = FlutterBluePlus.connectedDevices;
   Map<BluetoothDevice, int> rssiValues = {};
+  String mobileNumber = '';
+  List<SimCard> simCards = <SimCard>[];
 
   @override
   void initState() {
     super.initState();
+    MobileNumber.listenPhonePermission((isPermissionGranted) {
+      if (isPermissionGranted) {
+        initMobileNumberState();
+      } else {}
+    });
+
+    initMobileNumberState();
     _loadPhoneNumbers();
     Timer.periodic(Duration(seconds: bleAlarm.SECOND), (timer) async {
       for (BluetoothDevice device in bluetoothDevices) {
@@ -32,6 +43,27 @@ class _PhoneNumbersScreenState extends State<PhoneNumbersScreen> {
         await bleAlarm.alarm(device);
       }
     });
+  }
+
+  Future<void> initMobileNumberState() async {
+    if (!await MobileNumber.hasPhonePermission) {
+      await MobileNumber.requestPhonePermission;
+      return;
+    }
+    // Platform messages may fail, so we use a try/catch PlatformException.
+    try {
+      mobileNumber = (await MobileNumber.mobileNumber)!;
+      simCards = (await MobileNumber.getSimCards)!;
+    } on PlatformException catch (e) {
+      debugPrint("Failed to get mobile number because of '${e.message}'");
+    }
+
+    // If the widget was removed from the tree while the asynchronous platform
+    // message was in flight, we want to discard the reply rather than calling
+    // setState to update our non-existent appearance.
+    if (!mounted) return;
+
+    setState(() {});
   }
 
   @override
@@ -45,6 +77,7 @@ class _PhoneNumbersScreenState extends State<PhoneNumbersScreen> {
       // 1초마다 5번의 RSSI 값을 읽어들임
       for (int i = 0; i < 5; i++) {
         int rssi = await device.readRssi();
+        readAction(device);
         rssiList.add(rssi);
         // 1초 대기
         await Future.delayed(const Duration(seconds: 1));
@@ -89,6 +122,30 @@ class _PhoneNumbersScreenState extends State<PhoneNumbersScreen> {
     setState(() {});
   }
 
+  Future<void> readAction(BluetoothDevice device) async {
+    List<BluetoothService> services = device.servicesList;
+    for (var service in services) {
+      service.characteristics.forEach((characteristic) async {
+        if (characteristic.properties.read) {
+          List<int> value = await characteristic.read();
+          print('Read value: $value');
+          if (value == [66]) {
+            await sms.sendSMS(_phoneNumbers, mobileNumber);
+          } else if (value == [67]) {
+            if (_phoneNumbers.isNotEmpty) {
+              _callPhoneNumber(_phoneNumbers);
+            }
+          } else if (value == [68]) {
+            await sms.sendSMS(_phoneNumbers, mobileNumber);
+            if (_phoneNumbers.isNotEmpty) {
+              _callPhoneNumber(_phoneNumbers);
+            }
+          }
+        }
+      });
+    }
+  }
+
   Future<void> _callPhoneNumber(List<String> phoneNumbers) async {
     for (String phoneNumber in phoneNumbers) {
       bool? res = await FlutterPhoneDirectCaller.callNumber(phoneNumber);
@@ -123,7 +180,7 @@ class _PhoneNumbersScreenState extends State<PhoneNumbersScreen> {
           ),
           ElevatedButton(
             onPressed: () async {
-              await sms.sendSMS(_phoneNumbers);
+              await sms.sendSMS(_phoneNumbers, mobileNumber);
               if (_phoneNumbers.isNotEmpty) {
                 _callPhoneNumber(_phoneNumbers);
               }
