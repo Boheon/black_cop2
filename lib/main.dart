@@ -42,8 +42,6 @@ class _MyAppState extends State<MyApp> {
   late AppStateNotifier _appStateNotifier;
   late GoRouter _router;
 
-  //bool displaySplashImage = true;
-
   @override
   void initState() {
     super.initState();

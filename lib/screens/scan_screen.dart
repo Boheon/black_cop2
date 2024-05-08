@@ -11,7 +11,7 @@ import '../widgets/system_device_tile.dart';
 import '../widgets/scan_result_tile.dart';
 import '../utils/extra.dart';
 
-String searchText = 'BLK';
+String searchText = 'BLKCOPS';
 
 class ScanScreen extends StatefulWidget {
   const ScanScreen({super.key});
