@@ -19,11 +19,14 @@ class PhoneNumbersScreen extends StatefulWidget {
 class _PhoneNumbersScreenState extends State<PhoneNumbersScreen> {
   NaverCloudSms sms = NaverCloudSms();
   final TextEditingController _controller = TextEditingController();
+  final TextEditingController _messageController = TextEditingController();
   List<String> _phoneNumbers = [];
-  BluetoothAlarm bleAlarm = BluetoothAlarm(SECOND: 10, MESSAGE_DISTANCE: 10);
+  List<int> previousValue = [];
+  //BluetoothAlarm bleAlarm = BluetoothAlarm(SECOND: 10, SIGNAL_THRESHOLD: 10);
   List<BluetoothDevice> bluetoothDevices = FlutterBluePlus.connectedDevices;
   Map<BluetoothDevice, int> rssiValues = {};
   String mobileNumber = '';
+  String messageText = '';
   List<SimCard> simCards = <SimCard>[];
 
   @override
@@ -37,10 +40,15 @@ class _PhoneNumbersScreenState extends State<PhoneNumbersScreen> {
 
     initMobileNumberState();
     _loadPhoneNumbers();
-    Timer.periodic(Duration(seconds: bleAlarm.SECOND), (timer) async {
+    loadMessageText();
+
+    Timer.periodic(const Duration(seconds: 10), (timer) async {
       for (BluetoothDevice device in bluetoothDevices) {
+        subscribeAndReadAction(device);
+        print(
+            "SUBSCRIBE Action!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!");
         _updateAverageRssiValues(device);
-        await bleAlarm.alarm(device);
+        //await bleAlarm.alarm(device);
       }
     });
   }
@@ -77,7 +85,6 @@ class _PhoneNumbersScreenState extends State<PhoneNumbersScreen> {
       // 1초마다 5번의 RSSI 값을 읽어들임
       for (int i = 0; i < 5; i++) {
         int rssi = await device.readRssi();
-        readAction(device);
         rssiList.add(rssi);
         // 1초 대기
         await Future.delayed(const Duration(seconds: 1));
@@ -99,10 +106,29 @@ class _PhoneNumbersScreenState extends State<PhoneNumbersScreen> {
     }
   }
 
+  // 이전에 수신된 데이터와 현재 데이터가 같은지 확인하는 함수
+  bool isSameAsPrevious(List<int> value) {
+    if (previousValue == value) {
+      return true;
+    } else {
+      previousValue = value;
+      return false;
+    }
+    // 이전에 수신된 데이터와 현재 데이터가 같은 경우가 없음
+    // 현재 데이터를 이전 데이터로 저장하고 false 반환
+  }
+
   Future<void> _loadPhoneNumbers() async {
     SharedPreferences prefs = await SharedPreferences.getInstance();
     setState(() {
       _phoneNumbers = prefs.getStringList('phoneNumbers') ?? [];
+    });
+  }
+
+  Future<void> loadMessageText() async {
+    SharedPreferences prefs = await SharedPreferences.getInstance();
+    setState(() {
+      messageText = prefs.getString('messageText') ?? '';
     });
   }
 
@@ -112,6 +138,14 @@ class _PhoneNumbersScreenState extends State<PhoneNumbersScreen> {
     await prefs.setStringList('phoneNumbers', _phoneNumbers);
     setState(() {
       _controller.clear();
+    });
+  }
+
+  Future<void> saveMessageText(String messageText) async {
+    SharedPreferences prefs = await SharedPreferences.getInstance();
+    await prefs.setString('messageText', messageText);
+    setState(() {
+      _messageController.clear();
     });
   }
 
@@ -128,21 +162,69 @@ class _PhoneNumbersScreenState extends State<PhoneNumbersScreen> {
       service.characteristics.forEach((characteristic) async {
         if (characteristic.properties.read) {
           List<int> value = await characteristic.read();
+          print(
+              "///////////////////////////////////////////////////////////////////////////");
           print('Read value: $value');
-          if (value == [66]) {
-            await sms.sendSMS(_phoneNumbers, mobileNumber);
+          print(
+              "///////////////////////////////////////////////////////////////////////////");
+          if (value == [65, 76, 69, 82, 84]) {
+            await sms.sendSMS(_phoneNumbers, mobileNumber, messageText);
+            print(
+                "ALERT 수신 성공!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!");
           } else if (value == [67]) {
             if (_phoneNumbers.isNotEmpty) {
               _callPhoneNumber(_phoneNumbers);
             }
           } else if (value == [68]) {
-            await sms.sendSMS(_phoneNumbers, mobileNumber);
+            await sms.sendSMS(_phoneNumbers, mobileNumber, messageText);
             if (_phoneNumbers.isNotEmpty) {
               _callPhoneNumber(_phoneNumbers);
             }
           }
         }
       });
+    }
+  }
+
+  Future<void> subscribeAndReadAction(BluetoothDevice device) async {
+    List<BluetoothService> services = device.servicesList;
+    for (var service in services) {
+      for (var characteristic in service.characteristics) {
+        if (characteristic.properties.notify) {
+          characteristic.setNotifyValue(true).then((_) {
+            Stream<List<int>> stream = characteristic.lastValueStream;
+            stream.listen((List<int> value) {
+              print('Received value: $value');
+              // notify된 데이터가 이전 데이터와 같은지 확인
+              if (!isSameAsPrevious(value)) {
+                // 서로 다른 경우에만 sendSMS 실행
+                if (value[0] == 66 && value.length == 1) {
+                  // 예시: 특정 값이 수신되면 SMS 전송
+                  print("SMS MESSAGE SENT!");
+                  sms.sendSMS(_phoneNumbers, mobileNumber, messageText);
+                  print('Received ALERT message!');
+                } else if (value == [67]) {
+                  // 예시: 다른 특정 값이 수신되면 전화 걸기
+                  if (_phoneNumbers.isNotEmpty) {
+                    _callPhoneNumber(_phoneNumbers);
+                  }
+                } else if (value.length == 5 &&
+                    value[0] == 65 &&
+                    value[1] == 76 &&
+                    value[2] == 69 &&
+                    value[3] == 82 &&
+                    value[4] == 84) {
+                  // 예시: 또 다른 특정 값이 수신되면 SMS 전송 후 전화 걸기
+                  sms.sendSMS(_phoneNumbers, mobileNumber, messageText);
+                  if (_phoneNumbers.isNotEmpty) {
+                    _callPhoneNumber(_phoneNumbers);
+                  }
+                }
+              }
+            });
+          });
+        }
+      }
     }
   }
 
@@ -180,12 +262,29 @@ class _PhoneNumbersScreenState extends State<PhoneNumbersScreen> {
           ),
           ElevatedButton(
             onPressed: () async {
-              await sms.sendSMS(_phoneNumbers, mobileNumber);
+              await sms.sendSMS(_phoneNumbers, mobileNumber, messageText);
               if (_phoneNumbers.isNotEmpty) {
                 _callPhoneNumber(_phoneNumbers);
               }
             },
             child: const Text('Emergency Call'),
+          ),
+          Padding(
+            padding: const EdgeInsets.all(16.0),
+            child: TextField(
+              controller: _messageController,
+              decoration: const InputDecoration(
+                labelText: 'Enter Message Text',
+              ),
+            ),
+          ),
+          ElevatedButton(
+            onPressed: () {
+              if (_messageController.text.isNotEmpty) {
+                saveMessageText(_messageController.text);
+              }
+            },
+            child: const Text('Add Message Text'),
           ),
           Expanded(
             child: ListView.builder(

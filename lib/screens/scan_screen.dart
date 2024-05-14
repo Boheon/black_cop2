@@ -12,6 +12,7 @@ import '../widgets/scan_result_tile.dart';
 import '../utils/extra.dart';
 
 String searchText = 'BLKCOPS';
+List<String> searchTexts = ['BLKCOPS', 'PRX'];
 
 class ScanScreen extends StatefulWidget {
   const ScanScreen({super.key});
@@ -26,11 +27,13 @@ class _ScanScreenState extends State<ScanScreen> {
   bool _isScanning = false;
   late StreamSubscription<List<ScanResult>> _scanResultsSubscription;
   late StreamSubscription<bool> _isScanningSubscription;
+  SharedPreferences? _prefs;
 
   @override
   void initState() {
     super.initState();
 
+    _initSharedPreferences();
     _scanResultsSubscription = FlutterBluePlus.scanResults.listen((results) {
       _scanResults = results;
       if (mounted) {
@@ -46,6 +49,8 @@ class _ScanScreenState extends State<ScanScreen> {
         setState(() {});
       }
     });
+
+    //_autoConnectSavedDevices();
   }
 
   @override
@@ -53,6 +58,56 @@ class _ScanScreenState extends State<ScanScreen> {
     _scanResultsSubscription.cancel();
     _isScanningSubscription.cancel();
     super.dispose();
+  }
+
+  Future<void> _initSharedPreferences() async {
+    _prefs = await SharedPreferences.getInstance();
+  }
+
+  Future<void> _autoConnectSavedDevices() async {
+    List<String> savedDeviceIds = _prefs?.getStringList('savedDeviceIds') ?? [];
+    print(
+        "-----------------------------------------------------------------------------------------");
+    print("Saved Device Ids: $savedDeviceIds");
+    print(
+        "-----------------------------------------------------------------------------------------");
+    for (String savedDeviceId in savedDeviceIds) {
+      try {
+        List<BluetoothDevice> devices = await FlutterBluePlus.systemDevices;
+        BluetoothDevice device = devices.firstWhere(
+          (d) => d.remoteId.toString() == savedDeviceId,
+        );
+        print(
+            "---------------------------------------------------------------------------------------------------");
+        print("Auto connecting to saved device: ${device.platformName}");
+        print(
+            "---------------------------------------------------------------------------------------------------");
+
+        await device.connectAndUpdateStream();
+        _systemDevices.add(device);
+        setState(() {});
+      } catch (e) {
+        print("Auto connect error : $e");
+      }
+    }
+  }
+
+  Future<void> _saveConnectedDeviceId(String deviceId) async {
+    List<String> savedDeviceIds = _prefs!.getStringList('savedDeviceIds') ?? [];
+    if (!savedDeviceIds.contains(deviceId)) {
+      savedDeviceIds.add(deviceId);
+      await _prefs!.setStringList('savedDeviceIds', savedDeviceIds);
+    }
+  }
+
+  Future<void> _removeConnectedDeviceId(String deviceId) async {
+    List<String> savedDeviceIds = _prefs!.getStringList('savedDeviceIds') ?? [];
+    savedDeviceIds.remove(deviceId);
+    await _prefs!.setStringList('savedDeviceIds', savedDeviceIds);
+  }
+
+  Future<void> _clearConnectedDeviceIds() async {
+    await _prefs!.remove('savedDeviceIds');
   }
 
   Future onScanPressed() async {
@@ -64,7 +119,7 @@ class _ScanScreenState extends State<ScanScreen> {
     }
     try {
       await FlutterBluePlus.startScan(
-          withKeywords: [searchText], timeout: const Duration(seconds: 15));
+          withKeywords: searchTexts, timeout: const Duration(seconds: 15));
     } catch (e) {
       Snackbar.show(ABC.b, prettyException("Start Scan Error:", e),
           success: false);
@@ -83,11 +138,17 @@ class _ScanScreenState extends State<ScanScreen> {
     }
   }
 
-  void onConnectPressed(BluetoothDevice device) {
-    device.connectAndUpdateStream().catchError((e) {
+  void onConnectPressed(BluetoothDevice device) async {
+    try {
+      device.connectAndUpdateStream();
+      _systemDevices.add(device);
+      await _saveConnectedDeviceId(device.remoteId.toString());
+      setState(() {});
+    } catch (e) {
       Snackbar.show(ABC.c, prettyException("Connect Error:", e),
           success: false);
-    });
+    }
+
     MaterialPageRoute route = MaterialPageRoute(
         builder: (context) => DeviceScreen(device: device),
         settings: const RouteSettings(name: '/DeviceScreen'));

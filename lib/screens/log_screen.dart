@@ -13,7 +13,8 @@ class LogScreen extends StatefulWidget {
 class _LogScreenState extends State<LogScreen> {
   List<BluetoothDevice> bluetoothDevices = FlutterBluePlus.connectedDevices;
   Map<BluetoothDevice, int> rssiValues = {};
-  BluetoothAlarm bleAlarm = BluetoothAlarm(SECOND: 10, MESSAGE_DISTANCE: 10);
+  BluetoothAlarm bleAlarm =
+      BluetoothAlarm(SECOND: 200, SIGNAL_THRESHOLD: -1000);
   @override
   void initState() {
     // TODO: implement initState
@@ -34,8 +35,8 @@ class _LogScreenState extends State<LogScreen> {
   Future<void> _updateAverageRssiValues(BluetoothDevice device) async {
     List<int> rssiList = [];
     try {
-      // 1초마다 5번의 RSSI 값을 읽어들임
-      for (int i = 0; i < 5; i++) {
+      // 1초마다 10번의 RSSI 값을 읽어들임
+      for (int i = 0; i < 10; i++) {
         int rssi = await device.readRssi();
         rssiList.add(rssi);
         // 1초 대기
@@ -43,7 +44,7 @@ class _LogScreenState extends State<LogScreen> {
       }
 
       // rssiList에 측정된 값이 5개가 모이면 평균을 계산하고 상태를 업데이트함
-      if (rssiList.length == 5) {
+      if (rssiList.length == 10) {
         // 읽어들인 RSSI 값들의 평균 계산
         int sum = rssiList.reduce((value, element) => value + element);
         int averageRssi = sum ~/ rssiList.length; // 평균 계산
@@ -68,12 +69,15 @@ class _LogScreenState extends State<LogScreen> {
           itemCount: bluetoothDevices.length,
           itemBuilder: (context, index) {
             final device = bluetoothDevices[index];
+            final rssi = rssiValues[device];
+
             return ListTile(
               title: Text(device.platformName),
               subtitle: Text(
-                  '${rssiValues[device] != null ? bleAlarm.calculateDistance(-59, rssiValues[device]!) : 'N/A'} meters away'),
-              onTap: () {
+                  '${rssiValues[device] != null ? rssi : 'N/A'} meters away'),
+              onTap: () async {
                 _updateAverageRssiValues(device);
+                //device.readRssi();
               },
             );
           }),

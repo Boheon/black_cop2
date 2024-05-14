@@ -6,11 +6,11 @@ import 'package:flutter_local_notifications/flutter_local_notifications.dart';
 
 class BluetoothAlarm {
   final int SECOND;
-  final int MESSAGE_DISTANCE;
+  final int SIGNAL_THRESHOLD;
   KalmanFilter kalman = KalmanFilter();
   //late FlutterLocalNotificationsPlugin flutterLocalNotificationsPlugin;
 
-  BluetoothAlarm({required this.SECOND, required this.MESSAGE_DISTANCE}) {
+  BluetoothAlarm({required this.SECOND, required this.SIGNAL_THRESHOLD}) {
     //flutterLocalNotificationsPlugin = FlutterLocalNotificationsPlugin();
     //_initailizeNotifications();
   }
@@ -28,11 +28,15 @@ class BluetoothAlarm {
     int avgRssi = await _calculateAverageRssi(device);
 
     //평균으로 거리계산
-    num distance = calculateDistance(-59, avgRssi);
+    //num distance = calculateDistance(-4, avgRssi);
 
-    if (distance > MESSAGE_DISTANCE) {
-      await writeData(device, "M");
+    if (avgRssi <= SIGNAL_THRESHOLD) {
+      await writeData(device, "WARN");
+      print("알람을 보냈습니다.");
       _showNotification();
+    } else if (avgRssi > SIGNAL_THRESHOLD) {
+      await writeData(device, "CLEAR");
+      print("clear을 보냈습니다.");
     } else {
       print("------------------------------------------------");
     }
@@ -47,6 +51,7 @@ class BluetoothAlarm {
     return asciiCodes;
   }
 
+//rssi 평균다시 구하기
   Future<int> _calculateAverageRssi(BluetoothDevice device) async {
     List<int> rssiList = [];
     try {

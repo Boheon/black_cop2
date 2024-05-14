@@ -33,11 +33,12 @@ class _HomePageWidgetState extends State<HomePageWidget> {
   late HomePageModel _model;
   List<BluetoothDevice> devices = FlutterBluePlus.connectedDevices;
   final scaffoldKey = GlobalKey<ScaffoldState>();
-  BluetoothAlarm bleAlarm = BluetoothAlarm(SECOND: 10, MESSAGE_DISTANCE: 10);
+  BluetoothAlarm bleAlarm = BluetoothAlarm(SECOND: 10, SIGNAL_THRESHOLD: 10);
   List<String> _phoneNumbers = [];
   Map<BluetoothDevice, int> rssiValues = {};
   NaverCloudSms sms = NaverCloudSms();
   String _mobileNumber = '';
+  String messageText = '';
 
   @override
   void initState() {
@@ -46,6 +47,7 @@ class _HomePageWidgetState extends State<HomePageWidget> {
     WidgetsBinding.instance.addPostFrameCallback((_) => setState(() {}));
 
     _loadPhoneNumbers();
+    loadMessageText();
 
     MobileNumber.listenPhonePermission((isPermissionGranted) {
       if (isPermissionGranted) {
@@ -119,13 +121,13 @@ class _HomePageWidgetState extends State<HomePageWidget> {
           List<int> value = await characteristic.read();
           print('Read value: $value');
           if (value == [66]) {
-            await sms.sendSMS(_phoneNumbers, _mobileNumber);
+            await sms.sendSMS(_phoneNumbers, _mobileNumber, messageText);
           } else if (value == [67]) {
             if (_phoneNumbers.isNotEmpty) {
               _callPhoneNumber(_phoneNumbers);
             }
           } else if (value == [68]) {
-            await sms.sendSMS(_phoneNumbers, _mobileNumber);
+            await sms.sendSMS(_phoneNumbers, _mobileNumber, messageText);
             if (_phoneNumbers.isNotEmpty) {
               _callPhoneNumber(_phoneNumbers);
             }
@@ -146,6 +148,13 @@ class _HomePageWidgetState extends State<HomePageWidget> {
     SharedPreferences prefs = await SharedPreferences.getInstance();
     setState(() {
       _phoneNumbers = prefs.getStringList('phoneNumbers') ?? [];
+    });
+  }
+
+  Future<void> loadMessageText() async {
+    SharedPreferences prefs = await SharedPreferences.getInstance();
+    setState(() {
+      messageText = prefs.getString('messageText') ?? '';
     });
   }
 

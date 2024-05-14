@@ -12,7 +12,8 @@ class NaverCloudSms {
   // final String SERVICE_ID = 'ncp:sms:kr:331509974752:blackcops';
   // final String SECRET_KEY = 'HZtpWfiutctmuvh6Qca4TLbUzTyOBX60mEpZT4pw';
   String timestamp = (DateTime.now().millisecondsSinceEpoch).toString();
-  Future<void> sendSMS(List<String> phoneNumbers, String myNumber) async {
+  Future<void> sendSMS(
+      List<String> phoneNumbers, String myNumber, String message) async {
     print(
         "------------------------------------------------------------------------------------");
     print('timeStamp = $timestamp');
@@ -34,17 +35,17 @@ class NaverCloudSms {
         'x-ncp-apigw-signature-v2': getSignature(),
       },
       body: json.encode({
-        'type': 'SMS',
+        'type': 'LMS',
         'contentType': 'COMM',
         'countryCode': '82',
         'from': '01066102805',
-        // 'subject': 'black cop 알림',
-        'content': "도와주세요! 번호 : $myNumber, 현재위치 : $location",
+        'subject': 'black cop 알림',
+        'content': "도와주세요! 번호 : $myNumber, 현재위치 : $location 내용: $message",
         'messages': phoneNumbers.map((phoneNumber) {
           return {
             "to": phoneNumber,
-            //"subject": "도와주세요!!!",
-            "content": "도와주세요! 번호 : $myNumber, 현재위치 : $location",
+            "subject": "도와주세요!!!",
+            "content": "도와주세요! 번호 : $myNumber, 현재위치 : $location \n $message",
           };
         }).toList(),
         'files': []
