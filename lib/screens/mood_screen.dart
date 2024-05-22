@@ -89,7 +89,7 @@ class _MoodScreenState extends State<MoodScreen> {
             title: Text(device.platformName),
             onTap: () {
               //탭하면 메세지 전송
-              writeData(device, 'BEEP');
+              writeData(device, 'RGB 255 0 0');
               print('write mood message');
             },
           );

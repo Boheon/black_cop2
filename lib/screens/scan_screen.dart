@@ -11,7 +11,6 @@ import '../widgets/system_device_tile.dart';
 import '../widgets/scan_result_tile.dart';
 import '../utils/extra.dart';
 
-String searchText = 'BLKCOPS';
 List<String> searchTexts = ['BLKCOPS', 'PRX'];
 
 class ScanScreen extends StatefulWidget {
@@ -65,10 +64,10 @@ class _ScanScreenState extends State<ScanScreen> {
   }
 
   Future<void> _autoConnectSavedDevices() async {
-    List<String> savedDeviceIds = _prefs?.getStringList('savedDeviceIds') ?? [];
+    List<String> savedDeviceIds = _prefs!.getStringList('savedDeviceIds') ?? [];
     print(
         "-----------------------------------------------------------------------------------------");
-    print("Saved Device Ids: $savedDeviceIds");
+    print("1. Saved Device Ids: $savedDeviceIds");
     print(
         "-----------------------------------------------------------------------------------------");
     for (String savedDeviceId in savedDeviceIds) {
@@ -94,6 +93,11 @@ class _ScanScreenState extends State<ScanScreen> {
 
   Future<void> _saveConnectedDeviceId(String deviceId) async {
     List<String> savedDeviceIds = _prefs!.getStringList('savedDeviceIds') ?? [];
+    print(
+        "-----------------------------------------------------------------------------------------");
+    print("Saved Device Ids: $savedDeviceIds");
+    print(
+        "-----------------------------------------------------------------------------------------");
     if (!savedDeviceIds.contains(deviceId)) {
       savedDeviceIds.add(deviceId);
       await _prefs!.setStringList('savedDeviceIds', savedDeviceIds);

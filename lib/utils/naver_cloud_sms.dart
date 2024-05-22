@@ -38,7 +38,7 @@ class NaverCloudSms {
         'type': 'LMS',
         'contentType': 'COMM',
         'countryCode': '82',
-        'from': '01066102805',
+        'from': '01046317403',
         'subject': 'black cop 알림',
         'content': "도와주세요! 번호 : $myNumber, 현재위치 : $location 내용: $message",
         'messages': phoneNumbers.map((phoneNumber) {
@@ -66,16 +66,41 @@ class NaverCloudSms {
   }
 
   Future<String> getCurrentLocation() async {
-    LocationPermission permission = await Geolocator.requestPermission();
-    try {
-      Position position = await Geolocator.getCurrentPosition(
-        desiredAccuracy: LocationAccuracy.high,
-      );
-      return 'Latitude: ${position.latitude}, Longitude: ${position.longitude}';
-    } catch (e) {
-      print('Failed to get current location: $e');
-      return 'Failed to get current location';
+    bool serviceEnabled;
+    LocationPermission permission;
+
+    //위치 서비스 활성화 여부 확인
+    serviceEnabled = await Geolocator.isLocationServiceEnabled();
+
+    //활성화x 시 알림
+    if (!serviceEnabled) {
+      print('Location service is disabled');
+      return 'Location service is disabled';
     }
+
+    //위치 권한 확인
+    permission = await Geolocator.checkPermission();
+    if (permission == LocationPermission.denied) {
+      permission = await Geolocator.requestPermission();
+      //재신청해도 거부될경우
+      if (permission == LocationPermission.denied) {
+        print('Location permission is denied');
+        return 'Location permission is denied';
+      }
+    }
+
+    //권한이 영구 거부일 경우
+    if (permission == LocationPermission.deniedForever) {
+      print(
+          'Location permissions are permanently denied, we cannot request permissions.');
+      return 'Location permissions are permanently denied, we cannot request permissions.';
+    }
+
+    //위치정보 가져오기
+    Position position = await Geolocator.getCurrentPosition(
+        desiredAccuracy: LocationAccuracy.best);
+
+    return 'https://www.google.com/maps/search/?api=1&query=${position.latitude},${position.longitude}';
   }
 
   String getSignature() {
