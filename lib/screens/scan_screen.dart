@@ -21,8 +21,11 @@ class ScanScreen extends StatefulWidget {
 }
 
 class _ScanScreenState extends State<ScanScreen> {
-  List<BluetoothDevice> _systemDevices = [];
+  final List<BluetoothDevice> _systemDevices = [];
   List<ScanResult> _scanResults = [];
+  List<ScanResult> _scannedDevicesByKeywords = [];
+  List<ScanResult> _scannedDevicesByIds = [];
+  List<String> _savedDeviceIds = [];
   bool _isScanning = false;
   late StreamSubscription<List<ScanResult>> _scanResultsSubscription;
   late StreamSubscription<bool> _isScanningSubscription;
@@ -31,13 +34,12 @@ class _ScanScreenState extends State<ScanScreen> {
   @override
   void initState() {
     super.initState();
-
-    _initSharedPreferences();
     _scanResultsSubscription = FlutterBluePlus.scanResults.listen((results) {
       _scanResults = results;
       if (mounted) {
         setState(() {});
       }
+      print('Number of devices found during scan : ${results.length}');
     }, onError: (e) {
       Snackbar.show(ABC.b, prettyException("Scan Error:", e), success: false);
     });
@@ -49,7 +51,7 @@ class _ScanScreenState extends State<ScanScreen> {
       }
     });
 
-    //_autoConnectSavedDevices();
+    _initConnectSavedDevices();
   }
 
   @override
@@ -59,29 +61,38 @@ class _ScanScreenState extends State<ScanScreen> {
     super.dispose();
   }
 
-  Future<void> _initSharedPreferences() async {
+  Future<void> _initConnectSavedDevices() async {
+    await _loadSavedDeviceID();
+    await onScanPressedById();
+    await _autoConnectSavedDevices();
+  }
+
+  Future<void> _loadSavedDeviceID() async {
     _prefs = await SharedPreferences.getInstance();
+    setState(() {
+      _savedDeviceIds = _prefs?.getStringList('savedDeviceIds') ?? [];
+    });
+    print("1. load Saved Device Ids: $_savedDeviceIds");
   }
 
   Future<void> _autoConnectSavedDevices() async {
-    List<String> savedDeviceIds = _prefs!.getStringList('savedDeviceIds') ?? [];
     print(
         "-----------------------------------------------------------------------------------------");
-    print("1. Saved Device Ids: $savedDeviceIds");
+    print("2.auto Saved Device Ids: $_savedDeviceIds");
     print(
         "-----------------------------------------------------------------------------------------");
-    for (String savedDeviceId in savedDeviceIds) {
-      try {
-        List<BluetoothDevice> devices = await FlutterBluePlus.systemDevices;
-        BluetoothDevice device = devices.firstWhere(
-          (d) => d.remoteId.toString() == savedDeviceId,
-        );
-        print(
-            "---------------------------------------------------------------------------------------------------");
-        print("Auto connecting to saved device: ${device.platformName}");
-        print(
-            "---------------------------------------------------------------------------------------------------");
 
+    for (String _savedDeviceId in _savedDeviceIds) {
+      try {
+        if (_scanResults.isEmpty) {
+          print('No scan results available.');
+          return;
+        }
+        ScanResult? result = _scanResults.firstWhere(
+          (r) => r.device.remoteId.toString() == _savedDeviceId,
+        );
+
+        BluetoothDevice device = result.device;
         await device.connectAndUpdateStream();
         _systemDevices.add(device);
         setState(() {});
@@ -91,11 +102,17 @@ class _ScanScreenState extends State<ScanScreen> {
     }
   }
 
+  void printDeviceIds(List<ScanResult> results) {
+    for (ScanResult result in results) {
+      print("Device Id: ${result.device.remoteId}");
+    }
+  }
+
   Future<void> _saveConnectedDeviceId(String deviceId) async {
     List<String> savedDeviceIds = _prefs!.getStringList('savedDeviceIds') ?? [];
     print(
         "-----------------------------------------------------------------------------------------");
-    print("Saved Device Ids: $savedDeviceIds");
+    print(" button Saved Device Ids: $savedDeviceIds");
     print(
         "-----------------------------------------------------------------------------------------");
     if (!savedDeviceIds.contains(deviceId)) {
@@ -116,18 +133,41 @@ class _ScanScreenState extends State<ScanScreen> {
 
   Future onScanPressed() async {
     try {
-      _systemDevices = await FlutterBluePlus.systemDevices;
-    } catch (e) {
-      Snackbar.show(ABC.b, prettyException("System Devices Error:", e),
-          success: false);
-    }
-    try {
+      print('Starting scan....');
       await FlutterBluePlus.startScan(
           withKeywords: searchTexts, timeout: const Duration(seconds: 15));
     } catch (e) {
       Snackbar.show(ABC.b, prettyException("Start Scan Error:", e),
           success: false);
     }
+
+    // 스캔 결과를 기다렸다가 처리
+    await Future.delayed(const Duration(seconds: 15));
+    _scannedDevicesByKeywords = _scanResults;
+    print('Devices found with keywords: ${_scannedDevicesByKeywords.length}');
+    printDeviceIds(_scannedDevicesByKeywords);
+
+    if (mounted) {
+      setState(() {});
+    }
+  }
+
+  Future onScanPressedById() async {
+    try {
+      print('Starting scan with saved device IDs...');
+      await FlutterBluePlus.startScan(
+          withRemoteIds: _savedDeviceIds, timeout: const Duration(seconds: 15));
+    } catch (e) {
+      Snackbar.show(ABC.b, prettyException("Start Scan Error:", e),
+          success: false);
+    }
+
+    await Future.delayed(const Duration(seconds: 15));
+    _scannedDevicesByIds = _scanResults;
+    print(
+        'Devices found with saved device IDs: ${_scannedDevicesByIds.length}');
+    printDeviceIds(_scannedDevicesByIds);
+
     if (mounted) {
       setState(() {});
     }
@@ -136,6 +176,7 @@ class _ScanScreenState extends State<ScanScreen> {
   Future onStopPressed() async {
     try {
       FlutterBluePlus.stopScan();
+      print('Scan stopped.');
     } catch (e) {
       Snackbar.show(ABC.b, prettyException("Stop Scan Error:", e),
           success: false);

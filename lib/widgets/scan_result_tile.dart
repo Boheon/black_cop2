@@ -14,7 +14,6 @@ class ScanResultTile extends StatefulWidget {
 }
 
 class _ScanResultTileState extends State<ScanResultTile> {
-  // final String targetDeviceName = "PRXBand";
   BluetoothConnectionState _connectionState =
       BluetoothConnectionState.disconnected;
 
